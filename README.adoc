@@ -217,5 +217,51 @@ kubectl logs nginx-1830148962-334pi
 
 ==== Lets change the web page
 
+figure out where it goes:
+
 ----
-kubectl get -o yaml deployment nginx >nginx-deployment.yml
+kubectl exec nginx-2176846515-e65ah -c nginx -it -- bash
+----
+
+go look in /etc/nginx/conf.d
+
+then edit the deployment
+
+----
+kubectl edit deployment nginx
+----
+
+update the volumeMounts and volume section as follows:
+
+----
+template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: nginx
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nginx-html
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - gitRepo:
+          repository: https://github.com/rvowles/kubernetes-codelounge.git
+          revision: 5fa0ff1e010c5473a5aeaf9de7eae2c438620296
+        name: nginx-html
+----
+
+it doesn't work, how do you figure out why?
+
