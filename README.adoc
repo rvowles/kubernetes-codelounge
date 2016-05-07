@@ -209,4 +209,13 @@ if you now do (after a short while):
 kubectl get services
 ----
 
-You will see an external ip, put it in your browser.
+You will see an external ip, put it in your browser. Get others in the group to hit it.
+
+----
+kubectl logs nginx-1830148962-334pi
+----
+
+==== Lets change the web page
+
+----
+kubectl get -o yaml deployment nginx >nginx-deployment.yml
