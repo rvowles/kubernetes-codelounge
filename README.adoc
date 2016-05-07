@@ -1,4 +1,4 @@
-= Kubernetes and You
+= Code lounge Kubernetes
 
 Two part tutorial, GKE and bare metal node running on Vagrant.
 
@@ -25,7 +25,188 @@ sudo /etc/init.d/docker restart
 
 If you are on systemd you are on your own.
 
-=== GKE setup
+=== Setting up your Kubernetes Cluster
+
+==== GKE setup
+
+INFORMATION: Come in from Slides (Time to start your kubernetes cluster)
 
 You need to ensure that you have the Google Cloud Tools API installed and gcloud init run. We will set up a new project for this
 walk through.
+
+1. go to https://console.cloud.google.com[Cloud Console]. On the top right corner, choose the Projects dropdown and choose Create a Project.
+2. call the project "codelounge" - it will always give you a project-id that is different from your "name". We will use "codelounge-1304"
+3. go to your command line tools and type in
+
+----
+gcloud components install kubectl
+# when it has finished
+kubectl config view
+----
+
+
+It should tell you have no cluster details. So lets create some.
+
+----
+gcloud container clusters create codelounge \
+  --disk-size 200 \
+  --enable-cloud-logging \
+  --enable-cloud-monitoring \
+  --machine-type n1-standard-1 \
+  --num-nodes 3
+----
+
+==== Enabling GKE on your project
+
+WARNING: if you get an error similar to:
+
+----
+ERROR: (gcloud.container.clusters.create) The required property [zone] is not currently set.
+It can be set on a per-command basis by re-running your command with the [--zone] flag.
+
+You may set it for your current workspace by running:
+
+  $ gcloud config set compute/zone VALUE
+
+or it can be set temporarily by the environment variable [CLOUDSDK_COMPUTE_ZONE]
+----
+
+type in
+
+----
+gcloud compute zones list
+----
+
+Use the URL suggested to visit the URL to turn on the resource. It can take a little while.
+
+----
+gcloud config set compute/zone us-east1-b
+----
+
+WARNING: if you get an error like:
+
+go the https://console.cloud.google.com/iam-admin/serviceaccounts/project?project=codelounge-1304[Service Accounts]
+(your url may be slightly different), add a key, and download it. and type
+
+ ----
+ gcloud auth activate-service-account --key-file key-file-name.json
+ ----
+
+ Try creating the container nodes again and it may ask you to enable another api.
+
+You should now be able to run your gcloud command to create your cluster. If you type the command in again, it may
+take a little while before it succeeds as it does take a little while to provision.
+
+
+==== Check your kubernetes config
+
+----
+kubectl config view
+kubectl get nodes
+kubectl get pods (should show nothing)
+----
+
+You can go into the https://console.cloud.google.com[Google Cloud console] and see your nodes, and even ssh into them (click button on right of list)
+
+INFORMATION: Back to slides
+
+==== Deploy a new pod (nginx)
+
+INFORMATION: Slides entry point (Kubernetes Concepts - templates and pods)
+
+----
+kubectl run -i --tty busybox --image=busybox
+----
+
+It will bring the pod up and ask for you  to "hit enter". I had to use ctrl-j for this.
+
+in another window, get the list of pods, you should see a pod named busybox + a number, this identifies it as this specific busybox.
+
+if you type
+
+----
+kubectl get pods
+kubectl edit pod busybox-3008257414-io7m5
+kubectl describe pod busybox-3008257414-io7m5
+kubectl get -o yaml pod busybox-3008257414-io7m5
+----
+
+where busybox-3008257414 is the name of the pod, you will see the manifest that Kubernetes created for that pod.
+
+Now try and kill the pod
+
+----
+kubectl get pods
+kubectl delete pod busybox-3008257414-io7m5
+kubectl get pods
+----
+
+What happens?
+
+INFORMATION: Back to the Slides
+
+=== Looking at what else you have
+
+----
+kubectl get
+----
+
+Shows you a lot of different types.
+
+----
+kubectl get rs
+kubectl get deployments
+----
+
+WARNING: if vi plays up for you, you may have to enter *export KUBE_EDITOR=nano*
+
+Edit the busybox deployment and set the number of replicas to 0. Save the file and then watch the pods.
+
+Leave the deployment in place, you will need it again soon.
+
+=== Deploying a service
+
+We now want to create a basic nginx pod that will expose its services on port 80 and create a service.
+We can do this in one step using:
+
+kubectl run nginx --image=nginx --port=80 --expose
+
+This allows us to:
+
+----
+kubectl get services
+----
+
+There is no external ip, we can fix this by editing the service and setting its type to load balancer:
+
+----
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: 2016-05-07T07:41:57Z
+  name: nginx
+  namespace: default
+  resourceVersion: "433"
+  selfLink: /api/v1/namespaces/default/services/nginx
+  uid: 2d0f0be1-1427-11e6-9d73-42010af0002e
+spec:
+  clusterIP: 10.3.249.76
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: nginx
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer: {}
+----
+
+if you now do (after a short while):
+
+----
+kubectl get services
+----
+
+You will see an external ip, put it in your browser.
