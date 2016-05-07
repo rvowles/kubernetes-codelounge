@@ -1,0 +1,31 @@
+= Kubernetes and You
+
+Two part tutorial, GKE and bare metal node running on Vagrant.
+
+=== Local setup.
+
+We need to attempt to speed up the download and so we want to point our Docker downloads at a local cache, along as allowing us to
+push them to a local repository. 
+
+Please modify your Docker Daemon - if you are running on Linux, edit /etc/default/docker. 
+
+If running on MacOS 10 (X) please edit /var/lib/boot2docker/profile - edit the EXTRA_ARGS
+
+----
+EXTRA_ARGS='--label provider=vmwarefusion --insecure-registry=192.168.1.134:5001 --registry-mirror=http://192.168.1.134:5000'
+----
+
+Just add the --insecure-registry and --registry-mirror
+
+Typically you can restart with:
+
+----
+sudo /etc/init.d/docker restart
+----
+
+If you are on systemd you are on your own.
+
+=== GKE setup
+
+You need to ensure that you have the Google Cloud Tools API installed and gcloud init run. We will set up a new project for this
+walk through.
