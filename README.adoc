@@ -265,3 +265,126 @@ template:
 
 it doesn't work, how do you figure out why?
 
+==== ConfigMaps to the rescue
+
+ConfigMaps allow you to store name value pairs of name = string, file or json blob. In our case, we want to be able
+to change the configuration of nginx and we can do this by creating a folder called conf.d and putting the new default.conf
+in it. Thanks to Viktor, Anthony, Mike and Carl for helping get through this.
+
+----
+mkdir conf.d
+cat - >conf.d/default.conf
+----
+
+paste the next section, then ctrl-d
+
+----
+server {
+    listen       80;
+    server_name  localhost;
+
+    #charset koi8-r;
+    #access_log  /var/log/nginx/log/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html/kubernetes-codelounge;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .h root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+----
+
+now make the
+
+----
+kubectl create configmap nginx-config --from-file=conf.d
+----
+
+check it is there
+
+----
+kubectl get configmap nginx-config -o yaml
+----
+
+ok - ready to put it into our deployment:
+
+----
+kubectl edit deployment nginx
+----
+
+make the volumes and volumeMounts section look like this:
+
+----
+template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: nginx
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nginx-html
+        - mountPath: /etc/nginx/conf.d
+          name: nginx-config
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - gitRepo:
+          repository: https://github.com/rvowles/kubernetes-codelounge.git
+          revision: 5fa0ff1e010c5473a5aeaf9de7eae2c438620296
+        name: nginx-html
+      - configMap:
+          name: nginx-config
+        name: nginx-config
+----
+
+save it and deploy again, and if you hit the site, all is joy again.
+
+==== That Node Hello World Example
+
+Ideally we would like our nodejs hello world example being served, and we can do this but creating the docker image,
+pushing it into the Google repository and then creating our Deployment and Service.
+
